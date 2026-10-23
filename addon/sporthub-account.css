@@ -232,3 +232,6 @@
 
 /* Place helpful supporting text in view on wide screens instead of at modal bottom. */
 @media (min-width:801px) { #sh-root .sh-side-middle { margin:115px 0 34px; } }
+
+/* V2 account-first gate: do not close the mandatory account check by mistake. */
+#sh-root .sh-backdrop.sh-gate-required .sh-close {display:none!important;}
