@@ -1,0 +1,8 @@
+Them ngay truoc </body> trong cac file HTML dang su dung cua V1 va V2:
+<script defer src="https://tranthiquynhnhu0901-hue.github.io/shop-the-thao-v3/addon/loader.js"></script>
+
+V3: upload folder addon/ tu file zip nay.
+V1: repo shopthethao - add one script line to index.html and checkout pages.
+V2: repo shop-the-thao-v2 - add one script line to relevant plan pages.
+Do not replace current index.html, CSS, product content or layouts.
+See README.md for exact explanation.
