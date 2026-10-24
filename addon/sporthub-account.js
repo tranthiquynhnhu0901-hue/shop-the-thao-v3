@@ -168,14 +168,15 @@ const shSiteId=(()=>{let p=location.pathname.replace(/\/$/,'')||'/';return 'p'+s
 function shHash(s){let h=2166136261;for(let c of String(s)){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return(h>>>0).toString(36)}
 function shPath(node,base){const parts=[];let n=node;while(n&&n!==base&&parts.length<15){let i=1;for(let b=n.previousElementSibling;b;b=b.previousElementSibling)if(b.tagName===n.tagName)i++;parts.unshift(n.tagName.toLowerCase()+':'+i);n=n.parentElement}return n===base?parts.join('/'):''}
 function shMain(){
-  // V1 pages do not always contain <main>. Never let that turn a real page into "0 editable items".
+  // Scan the complete page body: V1 home sections may sit outside <main>,
+  // or a template can contain an unrelated/hidden <main>. Safety is enforced
+  // per-element by shSafe() below; checkout/cart stay excluded.
   if(/\/(?:checkout|cart)\.html$/i.test(location.pathname))return null;
-  const m=document.querySelector('main')||document.querySelector('[role="main"]');
-  return m&&m.querySelector('h1,h2,h3,p,img,section,article')?m:document.body;
+  return document.body;
 }
 function shSafe(node){
   return node&&node instanceof Element&&!node.closest(
-    '#sh-root,#shs-root,nav,form,button,footer,[data-sh-noedit],[contenteditable],'+
+    '#sh-root,#shs-root,nav,header,form,button,footer,[data-sh-noedit],[contenteditable],'+
     '.sh-nudge,.sh-toolbar,.shs-panel,.sporthub-checkout,.checkout-form,.order-summary,.cart-summary,'+
     '[id$="Status"],.v2-plan-status,[class*="checkout"],[class*="cart-total"],'+
     '[class*="price"],[class*="payment"],[class*="subtotal"]'
@@ -253,8 +254,8 @@ function shApplyLayouts(){const {layouts}=shTargets();const styles=[];for(const 
 async function shLaunchStudio(){if(!admin||!user||!sb){toast('Cần đăng nhập bằng tài khoản quản trị được cấp quyền.');return}if(editMode){editMode=false;renderEditing();renderToolbar()}
  const existing=window.SportHubStudio;if(existing?.open){existing.open({sb,user,content,shTargets,shApplyLayouts,applyContent,shSafe});return}
  const source=[...document.scripts].find(s=>/\/sporthub-account\.js(?:\?|$)/.test(s.src));if(!source){toast('Không xác định được thư mục add-on.');return}
- const base=new URL('./',source.src);const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('sporthub-studio.css?v=visual-11',base);document.head.append(css);
- const js=document.createElement('script');js.src=new URL('sporthub-studio.js?v=visual-11',base);js.onload=()=>window.SportHubStudio?.open({sb,user,content,shTargets,shApplyLayouts,applyContent,shSafe});js.onerror=()=>toast('Thiếu file addon/sporthub-studio.js trên V3.');document.head.append(js);
+ const base=new URL('./',source.src);const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('sporthub-studio.css?v=visual-12',base);document.head.append(css);
+ const js=document.createElement('script');js.src=new URL('sporthub-studio.js?v=visual-12',base);js.onload=()=>window.SportHubStudio?.open({sb,user,content,shTargets,shApplyLayouts,applyContent,shSafe});js.onerror=()=>toast('Thiếu file addon/sporthub-studio.js trên V3.');document.head.append(js);
 }
 function renderToolbar(){const slot=$('#sh-toolbar-place',root);slot.replaceChildren();if(!admin&&!adminDemo)return;const bar=document.createElement('div');bar.className='sh-toolbar';bar.innerHTML=`<strong>★ QUẢN TRỊ ${DEMO?'DEMO':'SPORTHUB'}</strong><button type="button" id="sh-manage">CRM / Quản lý</button><button type="button" class="sh-outline" id="sh-edit-mode">${editMode?'Tắt sửa nội dung':'Sửa trực tiếp'}</button><button type="button" class="sh-outline" id="sh-studio-open">THIẾT KẾ TRANG</button>${DEMO?'<button type="button" class="sh-outline" id="sh-leave-preview">Thoát thử quản trị</button>':''}`;slot.append(bar);$('#sh-manage',bar).onclick=()=>openAdmin('overview');$('#sh-studio-open',bar).onclick=shLaunchStudio;$('#sh-edit-mode',bar).onclick=()=>{editMode=!editMode;renderEditing();renderToolbar();toast(editMode?'Chạm vào phần được đánh dấu để sửa.':'Đã tắt chế độ chỉnh sửa.')};$('#sh-leave-preview',bar)?.addEventListener('click',()=>{adminDemo=false;editMode=false;renderEditing();renderToolbar()})}
 function renderEditing(){shTargets();$$('[data-sh-edit]').forEach(n=>n.classList.toggle('sh-editor-on',!n.dataset.shStudioAuto&&editMode&&(admin||adminDemo)))}
