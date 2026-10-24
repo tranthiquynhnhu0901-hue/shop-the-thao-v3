@@ -1,0 +1,22 @@
+/* SportHub Studio: UI only visible to admin and independent from host site. */
+#shs-root{--red:#b40b27;--dark:#14151b;--edge:#eddde2;font:15px/1.55 system-ui,-apple-system,'Segoe UI',Arial,sans-serif;color:#25202a;position:relative;z-index:2147483300}
+#shs-root *{box-sizing:border-box}#shs-root button,#shs-root input,#shs-root textarea,#shs-root select{font:inherit}#shs-root button{cursor:pointer}
+#shs-root .shs-panel{position:fixed;z-index:2147483300;right:0;top:0;bottom:0;width:min(380px,95vw);background:#fff;box-shadow:-8px 0 36px #14000845;overflow:auto;display:flex;flex-direction:column;overscroll-behavior:contain;border-left:1px solid #eddde2}
+#shs-root .shs-header{background:linear-gradient(135deg,#900a23,#e31b38);color:white;padding:21px 22px 18px;position:relative}
+#shs-root .shs-header h2{font-family:inherit;font-weight:900;font-size:22px;line-height:1.2;margin:16px 0 7px;color:#fff}#shs-root .shs-header p{font-size:13px;line-height:1.55;margin:0;color:#ffeaed}
+#shs-root .shs-brand{font-size:14px;font-weight:900;letter-spacing:1.4px}#shs-root #shs-close{position:absolute;right:14px;top:14px;width:33px;height:33px;background:#ffffff20;color:#fff;border:0;border-radius:50%;font-size:23px;line-height:1}
+#shs-root .shs-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:12px 17px;background:#fff7f8;border-bottom:1px solid var(--edge)}
+#shs-root .shs-tabs button{border:1px solid transparent;border-radius:10px;background:transparent;padding:12px 10px;font-weight:750;font-size:13px;color:#75636a}
+#shs-root .shs-tabs button[aria-selected=true]{color:#ab1027;background:white;border-color:#eec8d1;box-shadow:0 3px 14px #56001913}
+#shs-root .shs-detail{padding:19px 22px;flex:1;overflow:auto;min-height:190px}
+#shs-root .shs-empty{text-align:center;padding:24px 4px}#shs-root .shs-empty h3{font-size:19px;margin:8px 0 7px}#shs-root .shs-empty p{font-size:14px;color:#756b72}#shs-root .shs-empty small,#shs-root .shs-small{color:#776a73;font-size:12px}
+#shs-root .shs-emoji{font-size:35px;color:#b40b27}#shs-root .shs-selected-name{font-size:14px;margin-bottom:6px}#shs-root .shs-key{border:1px solid #efdee3;background:#fff7f8;padding:9px 10px;font-size:11px;color:#74666e;overflow-wrap:anywhere;border-radius:9px;margin-bottom:16px}
+#shs-root label{display:block;font-weight:750;font-size:13px;margin:13px 0 7px}#shs-root .shs-input{width:100%;border:1px solid #d9c9cf;border-radius:10px;padding:12px;background:#fff;color:#242128;font-size:14px;resize:vertical}#shs-root input[type=file]{max-width:100%;font-size:12px}
+#shs-root .shs-presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:11px 0 22px}#shs-root .shs-preset{border:1px solid #edbfc7;background:#fff6f8;color:#ac1129;border-radius:10px;min-height:53px;padding:8px;font-size:12px;font-weight:750}
+#shs-root .shs-detail h3{font-size:16px;margin:17px 0 9px;color:#99213b}
+#shs-root .shs-control{display:grid;grid-template-columns:1fr auto;gap:4px 8px;margin-bottom:10px}#shs-root .shs-control input{grid-column:span 2;width:100%;accent-color:#b40b27}#shs-root .shs-control label{margin:0}#shs-root .shs-control output{font-size:13px;color:#9a1027;font-weight:700}
+#shs-root .shs-acts{display:flex;gap:8px;margin-top:24px}#shs-root .shs-acts button{min-height:45px;border-radius:10px;padding:11px 12px;font-weight:800;font-size:13px}
+#shs-root .shs-ghost{flex:1;background:#fff5f6;border:1px solid #edcad1;color:#a60b27}#shs-root .shs-primary{flex:1.2;background:#b60c29;border:1px solid #b60c29;color:#fff}#shs-root .shs-reset{border:0;background:none;color:#9c1732;text-decoration:underline;margin:12px 0;font-size:12px}
+#shs-root .shs-footer{padding:14px 22px 18px;border-top:1px solid var(--edge);background:#fff9fa}#shs-root #shs-status{font-size:13px;color:#087e51;font-weight:650;margin:0 0 8px}#shs-root #shs-status[data-error='1']{color:#bc1437}#shs-root .shs-footer small{font-size:11px;color:#73656f;display:block}
+[data-sh-edit].shs-selected,[data-sh-layout-key].shs-selected{outline:3px solid #c40928!important;outline-offset:4px!important}
+@media(max-width:700px){#shs-root .shs-panel{width:min(350px,93vw)}#shs-root .shs-header{padding:16px 18px}#shs-root .shs-detail{padding:15px 18px}}
