@@ -153,7 +153,7 @@ function interceptGate(ev){
 }
 function resumePending(){if(!pending)return;const el=pending;pending=null;if(!el.isConnected)return;bypass=el;el.click();queueMicrotask(()=>{bypass=null})}
 function showPrompt(){if(user||onProtectedPlan)return;try{if(sessionStorage.getItem('sh_prompt_v3_seen'))return;sessionStorage.setItem('sh_prompt_v3_seen','yes')}catch{}const node=document.createElement('div');node.className='sh-nudge';node.innerHTML='<strong>🎁 Tham gia SportHub ngay!</strong><p>Tạo tài khoản miễn phí để dễ dàng đặt hàng, lưu kế hoạch cá nhân và nhận ưu đãi.</p><button type="button" class="sh-join">Đăng ký miễn phí</button><button class="sh-muted-btn" type="button">Để sau</button>';$('#sh-nudge-place',root).append(node);$('.sh-join',node).onclick=()=>{node.remove();openAuth('signup')};$('.sh-muted-btn',node).onclick=()=>node.remove()}
-async function refreshIdentity(){if(DEMO||!sb)return;const {data,error}=await sb.auth.getUser();if(error)console.warn('[SportHub]',error.message);user=data?.user||null;admin=false;if(user&&user.email?.toLowerCase()===ADMIN&&user.email_confirmed_at){const {data:roleRow}=await sb.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();admin=!!roleRow}paintAccount();
+async function refreshIdentity(){if(DEMO||!sb)return;const {data,error}=await sb.auth.getUser();if(error)console.warn('[SportHub]',error.message);user=data?.user||null;admin=false;if(user&&user.email?.toLowerCase()===ADMIN&&user.email_confirmed_at){const {data:roleRow}=await sb.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();admin=!!roleRow}if(!admin&&window.SportHubStudio?.isOpen?.())window.SportHubStudio.close();paintAccount();
   if(onProtectedPlan){
     if(user){
       // On the first visit, this closes ONLY the loading overlay; after an OAuth
@@ -167,27 +167,109 @@ function enterDemoAdmin(){if(!DEMO)return;adminDemo=true;renderToolbar();openAdm
 const shSiteId=(()=>{let p=location.pathname.replace(/\/$/,'')||'/';return 'p'+shHash(p)})();
 function shHash(s){let h=2166136261;for(let c of String(s)){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return(h>>>0).toString(36)}
 function shPath(node,base){const parts=[];let n=node;while(n&&n!==base&&parts.length<15){let i=1;for(let b=n.previousElementSibling;b;b=b.previousElementSibling)if(b.tagName===n.tagName)i++;parts.unshift(n.tagName.toLowerCase()+':'+i);n=n.parentElement}return n===base?parts.join('/'):''}
-function shMain(){if(/\/(?:checkout|cart)\.html$/i.test(location.pathname))return null;return document.querySelector('main')||document.querySelector('[role="main"]')}
-function shSafe(node){return node&&node instanceof Element&&!node.closest('#sh-root,#sh-studio-root,nav,form,[data-sh-noedit],[contenteditable],.sh-nudge,.sh-toolbar')&&!node.closest('[id$="Status"],.v2-plan-status,.sporthub-checkout,.checkout-form,.order-summary,.cart-summary')}
-function shTargets(){const m=shMain();if(!m)return{edits:[],layouts:[]};const texts=[...m.querySelectorAll('h1,h2,h3,h4,h5,h6,p,blockquote,img')];const edits=[];for(const n of texts){if(!shSafe(n))continue;if(n.tagName!=='IMG'){if(n.children.length>0&&!n.dataset.shEdit)continue;const t=n.textContent.trim();if(!t||t.length>10000||/\b(?:tổng tiền|thành tiền|giá bán|đơn hàng|mã đơn)\b/i.test(t)||/\d[., ]*\d\s*(?:₫|đ|vnđ)/i.test(t))continue}
-  if(!n.dataset.shEdit){const path=shPath(n,m);if(!path)continue;n.dataset.shEdit='auto.'+shSiteId+'.'+shHash(path);n.dataset.shStudioAuto='1'}edits.push(n)}
-  const layoutNodes=[...m.querySelectorAll('.v2-plan-grid,.product-grid,.products-grid,.product-list,.products,.product-cards,.catalog-grid,.shop-grid,.feature-grid,.features-grid,.category-grid,.categories-grid,.cards,.card-grid,.grid,section')].filter(n=>shSafe(n));
-  const layouts=[];for(const n of layoutNodes){const path=shPath(n,m);if(!path)continue;n.dataset.shLayoutKey='layout.'+shSiteId+'.'+shHash(path);layouts.push(n)}return{edits,layouts};
+function shMain(){
+  // V1 pages do not always contain <main>. Never let that turn a real page into "0 editable items".
+  if(/\/(?:checkout|cart)\.html$/i.test(location.pathname))return null;
+  const m=document.querySelector('main')||document.querySelector('[role="main"]');
+  return m&&m.querySelector('h1,h2,h3,p,img,section,article')?m:document.body;
 }
-function shLayoutCss(key,spec){if(!spec||typeof spec!=='object')return'';const mode=['grid','row','stack','default'].includes(spec.mode)?spec.mode:'default';if(mode==='default')return'';const cols=Math.max(1,Math.min(4,Number(spec.columns)||3));const gap=Math.max(0,Math.min(64,Number(spec.gap)||0));const padding=Math.max(0,Math.min(64,Number(spec.padding)||0));const colors={none:'transparent',white:'#ffffff',soft:'#fff5f6',dark:'#101820'};const bg=colors[spec.bg]||'transparent';const align=['start','center','end'].includes(spec.align)?spec.align:'start';const sel='[data-sh-layout-key="'+key+'"]';const row=mode==='row';const stack=mode==='stack';const grid=mode==='grid';const css=sel+'{display:'+(row?'flex':'grid')+'!important;'+(row?'flex-wrap:wrap!important;':'grid-template-columns:repeat('+(grid?cols:1)+',minmax(0,1fr))!important;')+'gap:'+gap+'px!important;padding:'+padding+'px!important;background:'+bg+'!important;align-items:'+align+'!important;}';const mobile='@media(max-width:700px){'+sel+'{display:grid!important;grid-template-columns:minmax(0,1fr)!important;}}';return css+mobile}
+function shSafe(node){
+  return node&&node instanceof Element&&!node.closest(
+    '#sh-root,#shs-root,nav,form,button,footer,[data-sh-noedit],[contenteditable],'+
+    '.sh-nudge,.sh-toolbar,.shs-panel,.sporthub-checkout,.checkout-form,.order-summary,.cart-summary,'+
+    '[id$="Status"],.v2-plan-status,[class*="checkout"],[class*="cart-total"],'+
+    '[class*="price"],[class*="payment"],[class*="subtotal"]'
+  );
+}
+function shTargets(){
+  const m=shMain();if(!m)return{edits:[],layouts:[]};
+  const edits=[], layouts=[];
+  const textNodes=[...m.querySelectorAll('h1,h2,h3,h4,h5,h6,p,blockquote,figcaption,img,span,strong,em')];
+  for(const n of textNodes){
+    if(!shSafe(n))continue;
+    if(!n.dataset.shEdit){
+      if(['SPAN','STRONG','EM'].includes(n.tagName)&&!n.parentElement?.closest('h1,h2,h3,h4,h5,h6,p,blockquote,figcaption'))continue;
+      if(n.tagName!=='IMG'){
+        // Never flatten headings with styled children; only leaf nodes are editable.
+        if(n.children.length>0)continue;
+        const t=n.textContent.trim();
+        if(!t||t.length>10000||/\b(?:tổng tiền|thành tiền|giá bán|đơn hàng|mã đơn)\b/i.test(t)||/\d[., ]*\d\s*(?:₫|đ|vnđ)/i.test(t))continue;
+      }
+      const path=shPath(n,m);if(!path)continue;
+      n.dataset.shEdit='auto.'+shSiteId+'.'+shHash(path);
+      n.dataset.shStudioAuto='1';
+    }
+    edits.push(n);
+  }
+  // Include hero/banner backgrounds drawn as CSS backgrounds when discoverable.
+  for(const n of m.querySelectorAll('section,.hero,[class*="hero"],[class*="banner"]')){
+    if(!shSafe(n)||n.dataset.shEdit||n.children.length===0)continue;
+    const bg=getComputedStyle(n).backgroundImage;
+    const before=getComputedStyle(n,'::before').backgroundImage;
+    const after=getComputedStyle(n,'::after').backgroundImage;
+    const usable=v=>v&&v!=='none'&&/^url\(["']?(?:https?:|\/)/i.test(v);
+    const which=usable(bg)?'background':usable(before)?'background-before':usable(after)?'background-after':null;
+    if(!which)continue;
+    const path=shPath(n,m);if(!path)continue;
+    n.dataset.shEdit='auto.bg.'+shSiteId+'.'+shHash(path);
+    n.dataset.shImageMode=which;n.dataset.shStudioAuto='1';edits.push(n);
+  }
+  // Prefer known grids; otherwise select actual CSS grid/flex containers with several cards.
+  const known='.v2-plan-grid,.product-grid,.products-grid,.product-list,.products,.product-cards,.catalog-grid,.shop-grid,.feature-grid,.features-grid,.category-grid,.categories-grid,.cards,.card-grid,.grid,[class*="product-grid"],[class*="plan-grid"]';
+  for(const n of m.querySelectorAll('div,section,ul')){
+    if(!shSafe(n)||n===m||n.closest('header,footer')||n.hasAttribute('data-sh-no-layout'))continue;
+    const children=[...n.children].filter(c=>c instanceof Element);
+    if(children.length<2||children.length>100)continue;
+    const css=getComputedStyle(n),display=css.display;
+    const cardChildren=children.filter(c=>c.matches('article,li,[class*="card"],[class*="product"],[class*="item"]'));
+    const usable=n.matches(known)||(/^(grid|inline-grid|flex|inline-flex)$/.test(display)&&cardChildren.length>=2);
+    if(!usable)continue;
+    const path=shPath(n,m);if(!path)continue;
+    n.dataset.shLayoutKey='layout.'+shSiteId+'.'+shHash(path);layouts.push(n);
+  }
+  return{edits,layouts};
+}
+function shLayoutCss(key,spec){
+ if(!spec||typeof spec!=='object')return'';
+ const mode=['grid','row','stack','default'].includes(spec.mode)?spec.mode:'default';if(mode==='default')return'';
+ const cols=Math.max(1,Math.min(4,Number(spec.columns)||3));
+ const gap=Math.max(0,Math.min(64,Number(spec.gap)||0));
+ const padding=Math.max(0,Math.min(64,Number(spec.padding)||0));
+ const radius=Math.max(0,Math.min(32,Number(spec.radius)||0));
+ const colors={none:'transparent',white:'#fff',soft:'#fff5f6',dark:'#101820'};
+ const bg=colors[spec.bg]||'transparent';
+ const align=['start','center','end'].includes(spec.align)?spec.align:'start';
+ const sel='[data-sh-layout-key="'+key+'"]';
+ const row=mode==='row',grid=mode==='grid';
+ let css=sel+'{display:'+(row?'flex':'grid')+'!important;'+(row?'flex-wrap:wrap!important;':'grid-template-columns:repeat('+(grid?cols:1)+',minmax(0,1fr))!important;')+'gap:'+gap+'px!important;padding:'+padding+'px!important;background:'+bg+'!important;align-items:'+align+'!important;border-radius:'+radius+'px!important;}';
+ if(row)css+=sel+'>*{flex:1 1 calc((100% - '+(cols-1)*gap+'px) / '+cols+');min-width:0;}';
+ if(Array.isArray(spec.order)&&spec.order.length<=100){const arr=spec.order.filter(x=>Number.isInteger(x)&&x>=0&&x<100);for(let i=0;i<arr.length;i++)css+=sel+'>:nth-child('+(arr[i]+1)+'){order:'+i+'!important}'}
+ css+='@media(max-width:700px){'+sel+'{display:grid!important;grid-template-columns:minmax(0,1fr)!important;}'+sel+'>*{flex:auto!important;}}';
+ return css;
+}
 function shApplyLayouts(){const {layouts}=shTargets();const styles=[];for(const n of layouts){const item=content.get(n.dataset.shLayoutKey);if(!item||item.kind!=='text')continue;try{const o=JSON.parse(item.value);styles.push(shLayoutCss(n.dataset.shLayoutKey,o))}catch{}}
  let tag=document.getElementById('sh-layout-styles');if(!tag){tag=document.createElement('style');tag.id='sh-layout-styles';document.head.append(tag)}const css=styles.join('\n');if(tag.textContent!==css)tag.textContent=css;
 }
 async function shLaunchStudio(){if(!admin||!user||!sb){toast('Cần đăng nhập bằng tài khoản quản trị được cấp quyền.');return}if(editMode){editMode=false;renderEditing();renderToolbar()}
  const existing=window.SportHubStudio;if(existing?.open){existing.open({sb,user,content,shTargets,shApplyLayouts,applyContent,shSafe});return}
  const source=[...document.scripts].find(s=>/\/sporthub-account\.js(?:\?|$)/.test(s.src));if(!source){toast('Không xác định được thư mục add-on.');return}
- const base=new URL('./',source.src);const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('sporthub-studio.css',base);document.head.append(css);
- const js=document.createElement('script');js.src=new URL('sporthub-studio.js',base);js.onload=()=>window.SportHubStudio?.open({sb,user,content,shTargets,shApplyLayouts,applyContent,shSafe});js.onerror=()=>toast('Thiếu file addon/sporthub-studio.js trên V3.');document.head.append(js);
+ const base=new URL('./',source.src);const css=document.createElement('link');css.rel='stylesheet';css.href=new URL('sporthub-studio.css?v=visual-11',base);document.head.append(css);
+ const js=document.createElement('script');js.src=new URL('sporthub-studio.js?v=visual-11',base);js.onload=()=>window.SportHubStudio?.open({sb,user,content,shTargets,shApplyLayouts,applyContent,shSafe});js.onerror=()=>toast('Thiếu file addon/sporthub-studio.js trên V3.');document.head.append(js);
 }
 function renderToolbar(){const slot=$('#sh-toolbar-place',root);slot.replaceChildren();if(!admin&&!adminDemo)return;const bar=document.createElement('div');bar.className='sh-toolbar';bar.innerHTML=`<strong>★ QUẢN TRỊ ${DEMO?'DEMO':'SPORTHUB'}</strong><button type="button" id="sh-manage">CRM / Quản lý</button><button type="button" class="sh-outline" id="sh-edit-mode">${editMode?'Tắt sửa nội dung':'Sửa trực tiếp'}</button><button type="button" class="sh-outline" id="sh-studio-open">THIẾT KẾ TRANG</button>${DEMO?'<button type="button" class="sh-outline" id="sh-leave-preview">Thoát thử quản trị</button>':''}`;slot.append(bar);$('#sh-manage',bar).onclick=()=>openAdmin('overview');$('#sh-studio-open',bar).onclick=shLaunchStudio;$('#sh-edit-mode',bar).onclick=()=>{editMode=!editMode;renderEditing();renderToolbar();toast(editMode?'Chạm vào phần được đánh dấu để sửa.':'Đã tắt chế độ chỉnh sửa.')};$('#sh-leave-preview',bar)?.addEventListener('click',()=>{adminDemo=false;editMode=false;renderEditing();renderToolbar()})}
-function renderEditing(){shTargets();$$('[data-sh-edit]').forEach(n=>n.classList.toggle('sh-editor-on',editMode&&(admin||adminDemo)))}
-function handleEditClick(e){if(window.SportHubStudio?.isOpen?.())return;if(!(admin||adminDemo)||!editMode)return;const n=e.target instanceof Element?e.target.closest('[data-sh-edit]'):null;if(!n||root.contains(n))return;e.preventDefault();e.stopImmediatePropagation();openEditor(n)}
-function applyContent(){shTargets();for(const n of $$('[data-sh-edit]')){let key=n.dataset.shEdit;let item=DEMO?demoData.content[key]:content.get(key);if(!item)continue;if(n.tagName==='IMG'&&item.kind==='image'){if((/^https:\/\//.test(item.value)||DEMO&&/^data:image\/(png|jpeg|webp);base64,/.test(item.value))&&n.getAttribute('src')!==item.value)n.src=item.value}else if(item.kind==='text'&&n.textContent!==item.value)n.textContent=item.value}shApplyLayouts()}
+function renderEditing(){shTargets();$$('[data-sh-edit]').forEach(n=>n.classList.toggle('sh-editor-on',!n.dataset.shStudioAuto&&editMode&&(admin||adminDemo)))}
+function handleEditClick(e){if(window.SportHubStudio?.isOpen?.())return;if(!(admin||adminDemo)||!editMode)return;const n=e.target instanceof Element?e.target.closest('[data-sh-edit]'):null;if(!n||root.contains(n)||n.dataset.shImageMode==='background')return;e.preventDefault();e.stopImmediatePropagation();openEditor(n)}
+function shSetBackground(n,value){
+ const mode=n.dataset.shImageMode||'';
+ const safe=String(value||'').replace(/["'\\\n\r{}<>]/g,'');
+ if(mode==='background'){n.style.setProperty('background-image','url("'+safe+'")','important');return}
+ if(!['background-before','background-after'].includes(mode))return;
+ const k=n.dataset.shEdit;
+ const id='sh-studio-bg-'+shHash(k);let style=document.getElementById(id);
+ if(!style){style=document.createElement('style');style.id=id;document.head.append(style)}
+ style.textContent='[data-sh-edit="'+k+'"]::'+(mode==='background-before'?'before':'after')+'{background-image:url("'+safe+'")!important}';
+}
+function applyContent(){shTargets();for(const n of $$('[data-sh-edit]')){let key=n.dataset.shEdit;let item=DEMO?demoData.content[key]:content.get(key);if(!item)continue;if(item.kind==='image'&&(n.tagName==='IMG'||n.dataset.shImageMode?.startsWith('background'))){if(/^https:\/\//.test(item.value)||DEMO&&/^data:image\/(png|jpeg|webp);base64,/.test(item.value)){if(n.tagName==='IMG'&&n.getAttribute('src')!==item.value)n.src=item.value;else shSetBackground(n,item.value)}}else if(item.kind==='text'&&n.textContent!==item.value)n.textContent=item.value}shApplyLayouts()}
 async function openEditor(node){const key=node.dataset.shEdit,kind=node.tagName==='IMG'?'image':'text',old=kind==='image'?(node.getAttribute('src')||''):node.textContent.trim();const body=`<form id="sh-content-form"><label class="sh-label">Khóa nội dung</label><div class="sh-note">${esc(key)}</div><label class="sh-label" for="sh-value">${kind==='image'?'URL ảnh HTTPS hoặc tải ảnh bên dưới':'Nội dung mới'}</label>${kind==='image'?`<input id="sh-value" class="sh-field" value="${esc(old)}"><label class="sh-label" for="sh-imagefile">Tải ảnh JPG / PNG / WebP (tối đa 3 MB)</label><input id="sh-imagefile" class="sh-field" type="file" accept="image/jpeg,image/png,image/webp">`:`<textarea class="sh-field" id="sh-value" maxlength="10000">${esc(old)}</textarea>`}<button type="submit" class="sh-primary">Lưu thay đổi</button><div id="sh-feedback" class="sh-feedback" role="status"></div></form>`;
  const w=modal(kind==='image'?'Thay ảnh trực tiếp':'Chỉnh sửa nội dung','Chỉ cập nhật đúng mục bạn chọn, không làm thay đổi giao diện xung quanh.',body);
  $('#sh-content-form',w).onsubmit=async e=>{e.preventDefault();let val=$('#sh-value',w).value.trim();const f=$('#sh-imagefile',w)?.files?.[0];try{if(f){if(!['image/png','image/jpeg','image/webp'].includes(f.type)||f.size>3e6)throw Error('Chỉ nhận JPG/PNG/WebP không quá 3 MB.');if(DEMO){val=await compressImage(f)}else{const ext={'image/png':'png','image/jpeg':'jpg','image/webp':'webp'}[f.type],path=`${user.id}/${uid()}.${ext}`;const {error}=await sb.storage.from('site-images').upload(path,f,{upsert:false});if(error)throw error;val=sb.storage.from('site-images').getPublicUrl(path).data.publicUrl;}}
