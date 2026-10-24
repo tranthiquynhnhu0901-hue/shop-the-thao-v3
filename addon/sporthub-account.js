@@ -153,7 +153,7 @@ function interceptGate(ev){
 }
 function resumePending(){if(!pending)return;const el=pending;pending=null;if(!el.isConnected)return;bypass=el;el.click();queueMicrotask(()=>{bypass=null})}
 function showPrompt(){if(user||onProtectedPlan)return;try{if(sessionStorage.getItem('sh_prompt_v3_seen'))return;sessionStorage.setItem('sh_prompt_v3_seen','yes')}catch{}const node=document.createElement('div');node.className='sh-nudge';node.innerHTML='<strong>🎁 Tham gia SportHub ngay!</strong><p>Tạo tài khoản miễn phí để dễ dàng đặt hàng, lưu kế hoạch cá nhân và nhận ưu đãi.</p><button type="button" class="sh-join">Đăng ký miễn phí</button><button class="sh-muted-btn" type="button">Để sau</button>';$('#sh-nudge-place',root).append(node);$('.sh-join',node).onclick=()=>{node.remove();openAuth('signup')};$('.sh-muted-btn',node).onclick=()=>node.remove()}
-async function refreshIdentity(){if(DEMO||!sb)return;const {data,error}=await sb.auth.getUser();if(error)console.warn('[SportHub]',error.message);user=data?.user||null;admin=false;if(user&&user.email?.toLowerCase()===ADMIN&&user.email_confirmed_at&&user.app_metadata?.provider==='google'){const {data:roleRow}=await sb.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();admin=!!roleRow}paintAccount();
+async function refreshIdentity(){if(DEMO||!sb)return;const {data,error}=await sb.auth.getUser();if(error)console.warn('[SportHub]',error.message);user=data?.user||null;admin=false;if(user&&user.email?.toLowerCase()===ADMIN&&user.email_confirmed_at){const {data:roleRow}=await sb.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();admin=!!roleRow}paintAccount();
   if(onProtectedPlan){
     if(user){
       // On the first visit, this closes ONLY the loading overlay; after an OAuth
